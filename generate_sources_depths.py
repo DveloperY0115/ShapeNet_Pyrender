@@ -5,6 +5,7 @@ import pyrender
 import trimesh
 import random
 
+
 def generate_source_depths(
         scene,
         height,

@@ -5,6 +5,7 @@ import pyrender
 import trimesh
 import random
 
+
 def generate_source_colors(
         scene,
         height,
@@ -14,7 +15,7 @@ def generate_source_colors(
 ):
     # theta : rotate horizontal, (0, pi] (y축과 이루는 각)
     # phi : rotate vertical [0, 2*pi] (x축과 이루는 각)
-    
+
     # input = width, height, mesh_path(.obj file)
     # output = W*H*3 array
     theta = random.uniform(1e-5, np.pi-1e-5)
