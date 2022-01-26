@@ -1,13 +1,15 @@
-import numpy as np
 import copy
-from PIL import Image
-from generate_sources_depths import generate_source_depths
-from generate_sources_colors import generate_source_colors
-from tqdm import tqdm
 import glob
-import trimesh
-import pyrender
 import os
+
+import numpy as np
+import pyrender
+import trimesh
+from PIL import Image
+from tqdm import tqdm
+
+from generate_sources_colors import generate_source_colors
+from generate_sources_depths import generate_source_depths
 
 os.environ["PYOPENGL_PLATFORM"] = "egl"
 os.environ["EGL_DEVICE_ID"] = "3"
