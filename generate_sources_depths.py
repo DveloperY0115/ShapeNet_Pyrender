@@ -7,29 +7,27 @@ import random
 
 
 def generate_source_depths(
-        scene,
-        height,
-        width,
-        znear=0.05,
-        zfar=1500,
+    scene,
+    height,
+    width,
+    znear=0.05,
+    zfar=1500,
 ):
     # theta : rotate horizontal, (0, pi) (y축과 이루는 각)
     # phi : rotate vertical [0, 2*pi] (x축과 이루는 각)
     # input = phi, theta of target camera, width, height, pyrender scene of mesh
     # output = W*H*3 array
-    theta = random.uniform(1e-5, np.pi-1e-5)
+    theta = random.uniform(1e-5, np.pi - 1e-5)
     phi = random.uniform(0, 2 * np.pi)
 
     r = 3 * scene.scale
     fx = 1062
     fy = 1062
-    K = np.array([fx, 0, width / 2,
-                  0, fy, height / 2,
-                  0, 0, 1]).reshape((3, 3))
-    z = r * np.array([
-        np.sin(theta) * np.cos(phi), np.cos(theta), np.sin(theta) * np.sin(phi)
-    ])
-    z_norm = (z / np.linalg.norm(z))
+    K = np.array([fx, 0, width / 2, 0, fy, height / 2, 0, 0, 1]).reshape((3, 3))
+    z = r * np.array(
+        [np.sin(theta) * np.cos(phi), np.cos(theta), np.sin(theta) * np.sin(phi)]
+    )
+    z_norm = z / np.linalg.norm(z)
     up_vector = np.array([0, 1, 0])
     left_vector = np.cross(up_vector, z_norm)
     left_vector = left_vector / np.linalg.norm(left_vector)
@@ -60,7 +58,7 @@ def generate_source_depths(
     depth = depth / r
     plt.imshow(depth)
     plt.show()
-    view_direction = - z / np.linalg.norm(z)
+    view_direction = -z / np.linalg.norm(z)
 
     Pi = np.zeros((3, 4))
     Pi[:, :3] = np.linalg.inv(K)
