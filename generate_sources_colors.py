@@ -25,10 +25,13 @@ def generate_source_colors(
     r = 3 * scene.scale
     fx = 1062
     fy = 1062
-    K = np.array([fx, 0, width / 2, 0, fy, height / 2, 0, 0, 1]).reshape((3, 3))
-    z = r * np.array(
-        [np.sin(theta) * np.cos(phi), np.cos(theta), np.sin(theta) * np.sin(phi)]
-    )
+    K = np.array([fx, 0, width / 2, 0, fy, height / 2, 0, 0, 1]).reshape(
+        (3, 3))
+    z = r * np.array([
+        np.sin(theta) * np.cos(phi),
+        np.cos(theta),
+        np.sin(theta) * np.sin(phi)
+    ])
     z_norm = z / np.linalg.norm(z)
     up_vector = np.array([0, 1, 0])
     left_vector = np.cross(up_vector, z_norm)
