@@ -1,8 +1,10 @@
 import os
 import sys
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
-os.environ['PYOPENGL_PLATFORM'] = 'egl'
-os.environ['EGL_DEVICE_ID'] = "1"
+
+# NOTE: when rendering on headless server, register the following env variables
+#os.environ['PYOPENGL_PLATFORM'] = 'egl'
+#os.environ['EGL_DEVICE_ID'] = "1"
 sys.path.append(".")
 sys.path.append("..")
 
@@ -58,6 +60,7 @@ def _render_shapenet_sample(
 
     # load mesh
     mesh = trimesh.load(mesh_file)
+
     camera_params = {}
 
     # render and save the results
