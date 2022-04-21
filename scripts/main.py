@@ -10,10 +10,8 @@ import argparse
 import csv
 import time
 
-import multiprocessing as mp
-from joblib import Parallel, delayed
-from itertools import repeat
 
+import trimesh
 import cv2
 import numpy as np
 from tqdm import tqdm
@@ -55,27 +53,16 @@ def _render_shapenet_sample(
         os.mkdir(sample_mask_dir)
 
     # specify camera intrinsics and extrinsics
-    phis = np.linspace(0, 2 * np.pi, 24)  # divide 360 degrees into 24 steps
+    phis = np.linspace(0, 2 * np.pi, 36)  # divide 360 degrees into 24 steps
     thetas = (np.pi / 2.05) * np.ones_like(phis)  # fixed elevation
 
     # load mesh
-    mesh = o3d.io.read_triangle_mesh(mesh_file)
-    mesh.compute_vertex_normals()
-    mesh.paint_uniform_color((0.7, 0.7, 0.7))
-    box = mesh.get_axis_aligned_bounding_box()
-    mesh_scale = ((box.get_max_bound() - box.get_min_bound()) ** 2).sum()
-    mesh = mesh.scale(0.35 * mesh_scale, center=(0, 0, 0))
-
-    #mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
-    #    size=0.1, origin=[0, 0, 0]
-    #)
-    #o3d.visualization.draw_geometries([mesh, mesh_frame])
-
+    mesh = trimesh.load(mesh_file)
     camera_params = {}
 
     # render and save the results
     for view_idx, (theta, phi) in enumerate(zip(thetas, phis)):
-        img, depth, mask, K, E = render_mesh_o3d(
+        img, depth, mask, K, E = render_mesh(
             mesh,
             theta,
             phi,
@@ -141,11 +128,12 @@ if __name__ == "__main__":
 
     # parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--shapenet_path", type=str, default="/home/dreamy1534/encoder4editing/data/paintme/02958343")
-    parser.add_argument("--sample_csv", type=str, default="/home/dreamy1534/ShapeNet_Pyrender/sedan.csv", help="CSV holding IDs samples to be rendered")
-    parser.add_argument("--save_path", type=str, default="/home/dreamy1534/encoder4editing/data/paintme/shapenet_sedan/")
-    parser.add_argument("--height", type=int, default=192)
-    parser.add_argument("--width", type=int, default=256)
+    parser.add_argument("--shapenet_path", type=str, default="data/shapenet_example")
+    #parser.add_argument("--sample_csv", type=str, default="/home/dreamy1534/ShapeNet_Pyrender/sedan.csv", help="CSV holding IDs samples to be rendered")
+    parser.add_argument("--sample_csv", type=str, default=None, help="CSV holding IDs samples to be rendered")
+    parser.add_argument("--save_path", type=str, default="result_no_light")
+    parser.add_argument("--height", type=int, default=128)
+    parser.add_argument("--width", type=int, default=128)
     args = parser.parse_args()
 
     # render
