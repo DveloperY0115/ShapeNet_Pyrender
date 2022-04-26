@@ -3,8 +3,8 @@ import sys
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
 
 # NOTE: when rendering on headless server, register the following env variables
-#os.environ['PYOPENGL_PLATFORM'] = 'egl'
-#os.environ['EGL_DEVICE_ID'] = "1"
+os.environ['PYOPENGL_PLATFORM'] = 'egl'
+os.environ['EGL_DEVICE_ID'] = "1"
 sys.path.append(".")
 sys.path.append("..")
 
@@ -55,7 +55,7 @@ def _render_shapenet_sample(
         os.mkdir(sample_mask_dir)
 
     # specify camera intrinsics and extrinsics
-    phis = np.linspace(0, 2 * np.pi, 36)  # divide 360 degrees into 24 steps
+    phis = np.linspace(0, 2 * np.pi, 8, endpoint=False)  # divide 360 degrees into 24 steps
     thetas = (np.pi / 2.05) * np.ones_like(phis)  # fixed elevation
 
     # load mesh
@@ -66,6 +66,7 @@ def _render_shapenet_sample(
     # render and save the results
     for view_idx, (theta, phi) in enumerate(zip(thetas, phis)):
         img, depth, mask, K, E = render_mesh(
+            view_idx,
             mesh,
             theta,
             phi,
@@ -134,7 +135,7 @@ if __name__ == "__main__":
     parser.add_argument("--shapenet_path", type=str, default="data/shapenet_example")
     #parser.add_argument("--sample_csv", type=str, default="/home/dreamy1534/ShapeNet_Pyrender/sedan.csv", help="CSV holding IDs samples to be rendered")
     parser.add_argument("--sample_csv", type=str, default=None, help="CSV holding IDs samples to be rendered")
-    parser.add_argument("--save_path", type=str, default="result_no_light")
+    parser.add_argument("--save_path", type=str, default="result_4_angles")
     parser.add_argument("--height", type=int, default=128)
     parser.add_argument("--width", type=int, default=128)
     args = parser.parse_args()

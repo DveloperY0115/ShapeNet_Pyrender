@@ -12,6 +12,7 @@ from utils.math import *
 
 
 def render_mesh(
+        view_idx: int,
         mesh: trimesh.Scene,
         theta: float,
         phi: float,
@@ -48,8 +49,14 @@ def render_mesh(
     - E: A Numpy array of shape (3, 4).
     """
     # set camera intrinsics
-    fx = 6.227512 / 0.0369161
-    fy = 6.227512 / 0.0369161
+    fx = 7.227512 / 0.0369161
+    fy = 12.227512 / 0.0369161
+
+    if view_idx in (0, 4):
+        fy = 1.3 * fy
+    elif view_idx in (2, 6):
+        fx = 1.75 * fx
+        fy = 1.75 * fy
     K = build_camera_intrinsic(fx, fy, height, width)
     
     # set camera extrinsics
@@ -73,6 +80,11 @@ def render_mesh(
     )
     K = cam.get_projection_matrix(width, height)
 
+    # set camera extrinsics
+    E = build_camera_extrinsic(
+        1.6, theta, phi,
+        np.array([0., 1., 0.])
+    )
     cam_node = pyrender.Node(camera=cam, matrix=E)
     scene.add_node(cam_node)
 
@@ -86,6 +98,9 @@ def render_mesh(
     img, depth = render.render(scene, flags=flags)
     depth[depth == 0.0] = np.inf
     mask = ~np.isinf(depth)
+    mask = np.expand_dims(mask, axis=-1)
+    mask = np.repeat(mask, 3, axis=-1)
+    img_wo_bg = img * mask  # clear out background
     mask = (mask.astype(np.uint8) * 255).astype(np.uint8)
 
-    return img, depth, mask, K[:3, :], E[:3, :]
+    return img_wo_bg, depth, mask, K[:3, :], E[:3, :]
