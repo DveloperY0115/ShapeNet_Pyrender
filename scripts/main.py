@@ -14,6 +14,8 @@ import time
 
 
 import trimesh
+import open3d as o3d
+o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Error)
 import cv2
 import numpy as np
 from tqdm import tqdm
@@ -25,6 +27,7 @@ def _render_shapenet_sample(
     shapenet_src_dir: str, sample_id: str, 
     save_dir: str,
     height: int, width: int,
+    textureless: bool,
     ) -> None:
     sample_dir = os.path.join(shapenet_src_dir, str(sample_id))
     assert os.path.exists(sample_dir), "[!] Path {} does not exist".format(sample_dir)
@@ -59,7 +62,19 @@ def _render_shapenet_sample(
     thetas = (np.pi / 2.05) * np.ones_like(phis)  # fixed elevation
 
     # load mesh
-    mesh = trimesh.load(mesh_file)
+    if textureless:
+        print("[!] Rendering textureless mesh: {}".format(sample_id))
+        mesh = o3d.io.read_triangle_mesh(mesh_file)
+        mesh.compute_vertex_normals()
+        mesh.paint_uniform_color((0.7, 0.7, 0.7))
+        box = mesh.get_axis_aligned_bounding_box()
+        mesh = mesh.translate(-box.get_center())
+        mesh_scale = ((box.get_max_bound() - box.get_min_bound()) ** 2).sum()
+        mesh = mesh.scale(0.35 * mesh_scale, center=(0, 0, 0))
+    else:
+        mesh = trimesh.load(mesh_file)
+        #mesh_scale = (np.array(mesh.extents) ** 2).sum()
+        #mesh = mesh.scaled(0.35 * mesh_scale)
 
     camera_params = {}
 
@@ -71,6 +86,7 @@ def _render_shapenet_sample(
             theta,
             phi,
             height, width,
+            flags=pyrender.RenderFlags.NONE,
         )
     
         cv2.imwrite(os.path.join(sample_img_dir, "{}.jpg".format(view_idx)), img)
@@ -79,13 +95,14 @@ def _render_shapenet_sample(
 
         camera_params["world_mat_{}".format(view_idx)] = E
         camera_params["camera_mat_{}".format(view_idx)] = K
-    np.savez(os.path.join(sample_mask_dir, "cameras.npz"), **camera_params)
+    np.savez(os.path.join(sample_save_dir, "cameras.npz"), **camera_params)
 
 def render_shapenet_samples(
     shapenet_src_dir: str,
     save_dir: str,
     height: int, width: int,
     sample_csv: str = None,
+    textureless: bool = False,
     ) -> None:
 
     # get sample directories
@@ -114,7 +131,8 @@ def render_shapenet_samples(
             shapenet_src_dir,
             sample_id,
             save_dir,
-            height, width
+            height, width,
+            textureless,
         )
 
     print("[!] Took {} seconds".format(time.time() - start_t))
@@ -138,6 +156,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_path", type=str, default="result_4_angles")
     parser.add_argument("--height", type=int, default=128)
     parser.add_argument("--width", type=int, default=128)
+    parser.add_argument("--textureless", type=bool, default=True)
     args = parser.parse_args()
 
     # render
@@ -146,4 +165,5 @@ if __name__ == "__main__":
         args.save_path, 
         args.height, args.width,
         args.sample_csv,
+        args.textureless,
     )
