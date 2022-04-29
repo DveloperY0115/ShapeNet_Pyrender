@@ -5,6 +5,7 @@ import sys
 sys.path.append(".")
 sys.path.append("..")
 
+import open3d as o3d
 import trimesh
 import pyrender
 
@@ -49,25 +50,45 @@ def render_mesh(
     - E: A Numpy array of shape (3, 4).
     """
     # set camera intrinsics
-    fx = 7.227512 / 0.0369161
-    fy = 12.227512 / 0.0369161
+    fx = 23.027512 / 0.0369161
+    fy = 29.027512 / 0.0369161
 
     if view_idx in (0, 4):
         fy = 1.3 * fy
     elif view_idx in (2, 6):
-        fx = 1.75 * fx
-        fy = 1.75 * fy
+        fx = 2.3 * fx
+        fy = 2.3 * fy
     K = build_camera_intrinsic(fx, fy, height, width)
     
     # set camera extrinsics
     E = build_camera_extrinsic(
-        1.2, theta, phi,
+        1, theta, phi,
         np.array([0., 1., 0.])
     )
 
     # parse mesh data
-    scene = pyrender.Scene.from_trimesh_scene(mesh)
-
+    if isinstance(mesh, o3d.geometry.TriangleMesh):
+        scene = pyrender.Scene(bg_color=(0.0, 0.0, 0.0))
+        
+        verts = np.asarray(mesh.vertices).astype(np.float32)
+        faces = np.asarray(mesh.triangles).astype(np.int32)
+        colors = np.asarray(mesh.vertex_colors).astype(np.float32)
+        normals = np.asarray(mesh.vertex_normals).astype(np.float32)
+        mesh = pyrender.Mesh(
+            primitives=[
+                pyrender.Primitive(
+                    positions=verts,
+                    normals=normals,
+                    color_0=colors,
+                    indices=faces,
+                    mode=pyrender.GLTF.TRIANGLES,
+                )
+            ],
+            is_visible=True,
+        )
+        scene.add_node(pyrender.Node(mesh=mesh, matrix=np.eye(4)))
+    else:
+        scene = pyrender.Scene.from_trimesh_scene(mesh, bg_color=(0.0, 0.0, 0.0))
 
     # add camera
     cam = pyrender.IntrinsicsCamera(
@@ -100,7 +121,6 @@ def render_mesh(
     mask = ~np.isinf(depth)
     mask = np.expand_dims(mask, axis=-1)
     mask = np.repeat(mask, 3, axis=-1)
-    img_wo_bg = img * mask  # clear out background
     mask = (mask.astype(np.uint8) * 255).astype(np.uint8)
 
-    return img_wo_bg, depth, mask, K[:3, :], E[:3, :]
+    return img, depth, mask, K[:3, :], E[:3, :]
