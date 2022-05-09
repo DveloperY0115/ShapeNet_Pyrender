@@ -6,5 +6,7 @@ venv
 
 # data
 data
-result
-result_lowres
+result*
+PaintMe_Data
+PaintMe_white
+ShapeNet_8_angles
