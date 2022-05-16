@@ -20,7 +20,7 @@ def render_mesh(
         height: int,
         width: int,
         znear: float = 0.01,
-        zfar: float = 1500,
+        zfar: float = 10.0,
         flags=pyrender.RenderFlags.FLAT,
     ) -> Tuple[np.array, np.array, np.array]:
     """
@@ -51,20 +51,20 @@ def render_mesh(
     """
     # set camera intrinsics
     fx = 23.027512 / 0.0369161
-    fy = 29.027512 / 0.0369161
+    fy = 23.027512 / 0.0369161
 
     if view_idx in (0, 4):
-        fy = 1.3 * fy
+        fx = 1.0 * fx
+        fy = 1.5 * fy
+        theta = np.pi / 2.0
     elif view_idx in (2, 6):
-        fx = 2.3 * fx
-        fy = 2.3 * fy
+        fx = 2.2 * fx
+        fy = 2.5 * fy
+    elif view_idx in (1, 3, 5, 7):
+        fx = 1.3 * fx
+        fy = 1.6 * fy 
+
     K = build_camera_intrinsic(fx, fy, height, width)
-    
-    # set camera extrinsics
-    E = build_camera_extrinsic(
-        1, theta, phi,
-        np.array([0., 1., 0.])
-    )
 
     # parse mesh data
     if isinstance(mesh, o3d.geometry.TriangleMesh):
@@ -103,15 +103,17 @@ def render_mesh(
 
     # set camera extrinsics
     E = build_camera_extrinsic(
-        1.6, theta, phi,
+        4.5, theta, phi,
         np.array([0., 1., 0.])
     )
     cam_node = pyrender.Node(camera=cam, matrix=E)
     scene.add_node(cam_node)
 
     # add light
-    light = pyrender.DirectionalLight(color=np.ones(3), intensity=3)
-    light_node = pyrender.Node(light=light, matrix=np.eye(4))
+    light = pyrender.DirectionalLight(color=np.ones(3), intensity=12.5)
+    light_mat = np.eye(4)
+    light_mat[:-1, 3] = np.array([1.0, 1.0, 1.0])
+    light_node = pyrender.Node(light=light, matrix=light_mat)
     scene.add_node(light_node, parent_node=cam_node)
 
     # render

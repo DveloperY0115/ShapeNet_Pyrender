@@ -88,16 +88,16 @@ def build_camera_extrinsic(
     t_unit = t / np.linalg.norm(t)
 
     # compute camera orientation
-    left_v = np.cross(t_unit, up_v)
-    left_v = left_v / np.linalg.norm(left_v)
-    up_v = np.cross(left_v, t_unit)
+    right_v = np.cross(t_unit, up_v)
+    right_v = right_v / np.linalg.norm(right_v)
+    up_v = np.cross(right_v, t_unit)
     up_v = up_v / np.linalg.norm(up_v)
 
     up_v = np.reshape(up_v, (3, 1))
-    left_v = np.reshape(left_v, (3, 1))
+    right_v = np.reshape(right_v, (3, 1))
     t = np.reshape(t, (3, 1))
     t_unit = np.reshape(t_unit, (3, 1))
-    R = np.concatenate([-left_v, up_v, t_unit], axis=-1)
+    R = np.concatenate([-right_v, up_v, t_unit], axis=-1)
 
     # construct 4 x 4 extrinsic matrix
     E = np.concatenate([R, t], axis=-1)

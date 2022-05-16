@@ -58,19 +58,28 @@ def _render_shapenet_sample(
         os.mkdir(sample_mask_dir)
 
     # specify camera intrinsics and extrinsics
-    phis = np.linspace(0, 2 * np.pi, 8, endpoint=False)  # divide 360 degrees into 24 steps
-    thetas = (np.pi / 2.05) * np.ones_like(phis)  # fixed elevation
+    phis = [
+        0.0, 
+        np.pi / 3, 
+        np.pi / 2, 
+        2 * np.pi / 3, 
+        np.pi, 
+        4 * np.pi / 3, 
+        3 * np.pi / 2,
+        5 * np.pi / 3,
+    ]
+    thetas = (np.pi / 2.0) * np.ones_like(phis)  # fixed elevation
 
     # load mesh
     if textureless:
         print("[!] Rendering textureless mesh: {}".format(sample_id))
         mesh = o3d.io.read_triangle_mesh(mesh_file)
         mesh.compute_vertex_normals()
-        mesh.paint_uniform_color((0.7, 0.7, 0.7))
+        mesh.paint_uniform_color((1.0, 1.0, 1.0))
         box = mesh.get_axis_aligned_bounding_box()
         mesh = mesh.translate(-box.get_center())
         mesh_scale = ((box.get_max_bound() - box.get_min_bound()) ** 2).sum()
-        mesh = mesh.scale(0.35 * mesh_scale, center=(0, 0, 0))
+        mesh = mesh.scale(1 / mesh_scale, center=(0, 0, 0))
     else:
         mesh = trimesh.load(mesh_file)
         #mesh_scale = (np.array(mesh.extents) ** 2).sum()
@@ -150,10 +159,11 @@ if __name__ == "__main__":
 
     # parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--shapenet_path", type=str, default="data/shapenet_example")
-    #parser.add_argument("--sample_csv", type=str, default="/home/dreamy1534/ShapeNet_Pyrender/sedan.csv", help="CSV holding IDs samples to be rendered")
-    parser.add_argument("--sample_csv", type=str, default=None, help="CSV holding IDs samples to be rendered")
-    parser.add_argument("--save_path", type=str, default="result_4_angles")
+    #parser.add_argument("--shapenet_path", type=str, default="data/shapenet_example")
+    parser.add_argument("--shapenet_path", type=str, default="../ShapeNetCore.v2/02958343")
+    parser.add_argument("--sample_csv", type=str, default="./sedan.csv", help="CSV holding IDs samples to be rendered")
+    #parser.add_argument("--sample_csv", type=str, default=None, help="CSV holding IDs samples to be rendered")
+    parser.add_argument("--save_path", type=str, default="PaintMe_Debug")
     parser.add_argument("--height", type=int, default=128)
     parser.add_argument("--width", type=int, default=128)
     parser.add_argument("--textureless", type=bool, default=True)

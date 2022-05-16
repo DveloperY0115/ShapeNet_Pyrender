@@ -7,6 +7,5 @@ venv
 # data
 data
 result*
-PaintMe_Data
-PaintMe_white
+PaintMe*
 ShapeNet_8_angles
