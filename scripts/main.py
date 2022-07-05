@@ -3,6 +3,7 @@ import csv
 import os
 import sys
 import time
+from typing import Optional
 
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
 
@@ -38,12 +39,13 @@ def _render_shapenet_sample(
     Renders a ShapeNet model and save the rendered outputs.
 
     Args:
-        shapenet_src_dir (str):
-        sample_id (str):
-        save_dir (str):
-        height (int):
-        width (int):
-        textureless (bool):
+        shapenet_src_dir (str): The directory containing 3D shape's geometry, material, and texture files.
+        sample_id (str): The ShapeNet ID of the shape being rendered.
+        save_dir (str): The directory where rendering outputs are saved.
+        height (int): The height of output images.
+        width (int): The width of output images.
+        textureless (bool): The flag for toggling textureless rendering mode. If True, the texture images
+            of a 3D shapes are ignored and the mesh is uniformly colored with white and rendered.
     """
     sample_dir = os.path.join(shapenet_src_dir, str(sample_id))
     assert os.path.exists(sample_dir), "[!] Path {} does not exist".format(sample_dir)
@@ -88,22 +90,25 @@ def _render_shapenet_sample(
 
     # load mesh
     if textureless:
-        print("[!] Rendering textureless mesh: {}".format(sample_id))
         mesh = o3d.io.read_triangle_mesh(mesh_file)
         mesh.compute_vertex_normals()
         mesh.paint_uniform_color((1.0, 1.0, 1.0))
+
+        # scale the mesh
         box = mesh.get_axis_aligned_bounding_box()
         mesh = mesh.translate(-box.get_center())
         mesh_scale = ((box.get_max_bound() - box.get_min_bound()) ** 2).sum()
         mesh = mesh.scale(1 / mesh_scale, center=(0, 0, 0))
     else:
-        mesh = trimesh.load(mesh_file)
+        raise ValueError("Currently unsupported.")
+        # mesh = trimesh.load(mesh_file)
 
     camera_params = {}
 
     # render and save the results
     for view_idx, (theta, phi) in enumerate(zip(thetas, phis)):
         # TODO: Replace the hard-coded numbers
+        # TODO: How to adjust the size of objects to fit the entire image?
         fx = 23.027512 / 0.0369161
         fy = 23.027512 / 0.0369161
 
@@ -122,17 +127,22 @@ def _render_shapenet_sample(
             mesh,
             theta,
             phi,
+            fx,
+            fy,
             height,
             width,
             flags=pyrender.RenderFlags.NONE,
         )
 
-        cv2.imwrite(os.path.join(sample_img_dir, "{}.jpg".format(view_idx)), img)
-        cv2.imwrite(os.path.join(sample_depth_dir, "{}.exr".format(view_idx)), depth)
-        cv2.imwrite(os.path.join(sample_mask_dir, "{}.jpg".format(view_idx)), mask)
+        # save images
+        cv2.imwrite(os.path.join(sample_img_dir, f"{view_idx}.jpg"), img)
+        cv2.imwrite(os.path.join(sample_depth_dir, f"{view_idx}.exr"), depth)
+        cv2.imwrite(os.path.join(sample_mask_dir, f"{view_idx}.jpg"), mask)
 
-        camera_params["world_mat_{}".format(view_idx)] = E
-        camera_params["camera_mat_{}".format(view_idx)] = K
+        # save camera parameters (intrinsics & extrinsics)
+        camera_params[f"world_mat_{view_idx}"] = E
+        camera_params[f"camera_mat_{view_idx}"] = K
+
     np.savez(os.path.join(sample_save_dir, "cameras.npz"), **camera_params)
 
 
@@ -141,19 +151,22 @@ def render_shapenet_samples(
     save_dir: str,
     height: int,
     width: int,
-    sample_csv: str = None,
+    sample_csv: Optional[str] = None,
     textureless: bool = False,
 ) -> None:
     """
     Renders shapes from ShapeNet located under dataset root directory.
 
     Args:
-        shapenet_root (str):
-        sample_id (str):
-        save_dir (str):
-        height (int):
-        width (int):
-        textureless (bool):
+        shapenet_root (str): The root directory of ShapeNet dataset.
+        save_dir (str): The directory where rendering outputs are saved.
+        height (int): The height of output images.
+        width (int): The width of output images.
+        sample_csv (str): A CSV file containing ShapeNet IDs of 3D shapes to be rendered.
+            If None, all 3D shapes found under the root directory are rendered. Set to None by default.
+        textureless (bool): The flag for toggling textureless rendering mode. If True, the texture images
+            of a 3D shapes are ignored and the mesh is uniformly colored with white and rendered.
+            Set to False by default.
     """
 
     # get sample directories
@@ -210,7 +223,7 @@ if __name__ == "__main__":
         default="./sedan.csv",
         help="CSV holding IDs samples to be rendered",
     )
-    parser.add_argument("--save_path", type=str, default="PaintMe_Debug")
+    parser.add_argument("--save_path", type=str, default="PaintMe_Data")
     parser.add_argument("--height", type=int, default=128)
     parser.add_argument("--width", type=int, default=128)
     parser.add_argument("--textureless", type=bool, default=True)
