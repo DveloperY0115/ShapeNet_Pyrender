@@ -13,63 +13,46 @@ from utils.math import *
 
 
 def render_mesh(
-        view_idx: int,
-        mesh: trimesh.Scene,
-        theta: float,
-        phi: float,
-        height: int,
-        width: int,
-        znear: float = 0.01,
-        zfar: float = 10.0,
-        flags=pyrender.RenderFlags.FLAT,
-    ) -> Tuple[np.array, np.array, np.array]:
+    mesh: trimesh.Scene,
+    theta: float,
+    phi: float,
+    fx: float,
+    fy: float,
+    height: int,
+    width: int,
+    znear: float = 0.01,
+    zfar: float = 10.0,
+    flags=pyrender.RenderFlags.FLAT,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Renders a mesh loaded as open3d.geometry.TriangleMesh object.
 
     Args:
-    - mesh: trimesh.Mesh.
-        A mesh to be rendered.
-    - theta: Float.
-        Angle between positive direction of y axis and displacement vector.
-    - phi: Float.
-        Angle between positive direction of x axis and displacement vector.
-    - height: Int.
-        Height of the viewport.
-    - width: Int.
-        Width of the viewport.
-    - znear: Float.
-        The nearest visible depth.
-    - zfar: Float.
-        The farthest visible depth.
+        - view_idx (int):
+        - mesh (trimesh.Mesh): A mesh to be rendered.
+        - theta (float): Angle between positive direction of y axis and displacement vector.
+        - phi (float): Angle between positive direction of x axis and displacement vector.
+        - fx (float): A focal length along x-axis of image plane.
+        - fy (float): A focal length along y-axis of image plane.
+        - height (int): Height of the viewport.
+        - width (int): Width of the viewport.
+        - znear (float): The nearest visible depth.
+        - zfar (float): The farthest visible depth.
 
     Returns:
-    - color: A Numpy array of shape (3, height, width).
-    - depth: A Numpy array of shape (1, height, width).
-    - mask: A Numpy array of shape (1, height, width).
-    - K: A Numpy array of shape (3, 4).
-    - E: A Numpy array of shape (3, 4).
+        - color (np.ndarray): An array of shape (3, height, width).
+        - depth (np.ndarray): An array of shape (1, height, width).
+        - mask (np.ndarray): An array of shape (1, height, width).
+        - K (np.ndarray): An array of shape (3, 4).
+        - E (np.ndarray): An array of shape (3, 4).
     """
-    # set camera intrinsics
-    fx = 23.027512 / 0.0369161
-    fy = 23.027512 / 0.0369161
-
-    if view_idx in (0, 4):
-        fx = 1.0 * fx
-        fy = 1.5 * fy
-        theta = np.pi / 2.0
-    elif view_idx in (2, 6):
-        fx = 2.2 * fx
-        fy = 2.5 * fy
-    elif view_idx in (1, 3, 5, 7):
-        fx = 1.3 * fx
-        fy = 1.6 * fy 
-
+    # build camera intrinsic matrix
     K = build_camera_intrinsic(fx, fy, height, width)
 
     # parse mesh data
     if isinstance(mesh, o3d.geometry.TriangleMesh):
         scene = pyrender.Scene(bg_color=(0.0, 0.0, 0.0))
-        
+
         verts = np.asarray(mesh.vertices).astype(np.float32)
         faces = np.asarray(mesh.triangles).astype(np.int32)
         colors = np.asarray(mesh.vertex_colors).astype(np.float32)
@@ -103,8 +86,10 @@ def render_mesh(
 
     # set camera extrinsics
     E = build_camera_extrinsic(
-        4.5, theta, phi,
-        np.array([0., 1., 0.])
+        4.5,
+        theta,
+        phi,
+        np.array([0.0, 1.0, 0.0]),
     )
     cam_node = pyrender.Node(camera=cam, matrix=E)
     scene.add_node(cam_node)

@@ -1,34 +1,50 @@
+import argparse
+import csv
 import os
 import sys
+import time
+
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
 
 # NOTE: when rendering on headless server, register the following env variables
-os.environ['PYOPENGL_PLATFORM'] = 'egl'
-os.environ['EGL_DEVICE_ID'] = "1"
-sys.path.append(".")
-sys.path.append("..")
-
-import argparse
-import csv
-import time
+os.environ["PYOPENGL_PLATFORM"] = "egl"
+os.environ["EGL_DEVICE_ID"] = "1"
 
 
-import trimesh
-import open3d as o3d
-o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Error)
 import cv2
 import numpy as np
-from tqdm import tqdm
+import open3d as o3d
 
+o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Error)
+from tqdm import tqdm
+import trimesh
+
+# import modules defined in the project
+sys.path.append(".")
+sys.path.append("..")
 from render import *
 from utils.math import *
 
+
 def _render_shapenet_sample(
-    shapenet_src_dir: str, sample_id: str, 
+    shapenet_src_dir: str,
+    sample_id: str,
     save_dir: str,
-    height: int, width: int,
+    height: int,
+    width: int,
     textureless: bool,
-    ) -> None:
+) -> None:
+    """
+    Renders a ShapeNet model and save the rendered outputs.
+
+    Args:
+        shapenet_src_dir (str):
+        sample_id (str):
+        save_dir (str):
+        height (int):
+        width (int):
+        textureless (bool):
+    """
     sample_dir = os.path.join(shapenet_src_dir, str(sample_id))
     assert os.path.exists(sample_dir), "[!] Path {} does not exist".format(sample_dir)
 
@@ -59,12 +75,12 @@ def _render_shapenet_sample(
 
     # specify camera intrinsics and extrinsics
     phis = [
-        0.0, 
-        np.pi / 3, 
-        np.pi / 2, 
-        2 * np.pi / 3, 
-        np.pi, 
-        4 * np.pi / 3, 
+        0.0,
+        np.pi / 3,
+        np.pi / 2,
+        2 * np.pi / 3,
+        np.pi,
+        4 * np.pi / 3,
         3 * np.pi / 2,
         5 * np.pi / 3,
     ]
@@ -82,22 +98,35 @@ def _render_shapenet_sample(
         mesh = mesh.scale(1 / mesh_scale, center=(0, 0, 0))
     else:
         mesh = trimesh.load(mesh_file)
-        #mesh_scale = (np.array(mesh.extents) ** 2).sum()
-        #mesh = mesh.scaled(0.35 * mesh_scale)
 
     camera_params = {}
 
     # render and save the results
     for view_idx, (theta, phi) in enumerate(zip(thetas, phis)):
+        # TODO: Replace the hard-coded numbers
+        fx = 23.027512 / 0.0369161
+        fy = 23.027512 / 0.0369161
+
+        if view_idx in (0, 4):
+            fx = 1.0 * fx
+            fy = 1.5 * fy
+            theta = np.pi / 2.0
+        elif view_idx in (2, 6):
+            fx = 2.2 * fx
+            fy = 2.5 * fy
+        elif view_idx in (1, 3, 5, 7):
+            fx = 1.3 * fx
+            fy = 1.6 * fy
+
         img, depth, mask, K, E = render_mesh(
-            view_idx,
             mesh,
             theta,
             phi,
-            height, width,
+            height,
+            width,
             flags=pyrender.RenderFlags.NONE,
         )
-    
+
         cv2.imwrite(os.path.join(sample_img_dir, "{}.jpg".format(view_idx)), img)
         cv2.imwrite(os.path.join(sample_depth_dir, "{}.exr".format(view_idx)), depth)
         cv2.imwrite(os.path.join(sample_mask_dir, "{}.jpg".format(view_idx)), mask)
@@ -106,17 +135,30 @@ def _render_shapenet_sample(
         camera_params["camera_mat_{}".format(view_idx)] = K
     np.savez(os.path.join(sample_save_dir, "cameras.npz"), **camera_params)
 
+
 def render_shapenet_samples(
-    shapenet_src_dir: str,
+    shapenet_root: str,
     save_dir: str,
-    height: int, width: int,
+    height: int,
+    width: int,
     sample_csv: str = None,
     textureless: bool = False,
-    ) -> None:
+) -> None:
+    """
+    Renders shapes from ShapeNet located under dataset root directory.
+
+    Args:
+        shapenet_root (str):
+        sample_id (str):
+        save_dir (str):
+        height (int):
+        width (int):
+        textureless (bool):
+    """
 
     # get sample directories
     if sample_csv is None:
-        sample_ids = [d for d in os.listdir(shapenet_src_dir)]
+        sample_ids = [d for d in os.listdir(shapenet_root)]
     else:
         with open(sample_csv, "r", encoding="utf-8") as f:
             content = csv.reader(f)
@@ -132,20 +174,22 @@ def render_shapenet_samples(
     # create the save directory
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
-    
+
     start_t = time.time()
 
     for sample_id in tqdm(sample_ids):
         _render_shapenet_sample(
-            shapenet_src_dir,
+            shapenet_root,
             sample_id,
             save_dir,
-            height, width,
+            height,
+            width,
             textureless,
         )
 
     print("[!] Took {} seconds".format(time.time() - start_t))
     print("[!] Done.")
+
 
 if __name__ == "__main__":
     if sys.platform == "darwin":
@@ -159,10 +203,13 @@ if __name__ == "__main__":
 
     # parse arguments
     parser = argparse.ArgumentParser()
-    #parser.add_argument("--shapenet_path", type=str, default="data/shapenet_example")
     parser.add_argument("--shapenet_path", type=str, default="../ShapeNetCore.v2/02958343")
-    parser.add_argument("--sample_csv", type=str, default="./sedan.csv", help="CSV holding IDs samples to be rendered")
-    #parser.add_argument("--sample_csv", type=str, default=None, help="CSV holding IDs samples to be rendered")
+    parser.add_argument(
+        "--sample_csv",
+        type=str,
+        default="./sedan.csv",
+        help="CSV holding IDs samples to be rendered",
+    )
     parser.add_argument("--save_path", type=str, default="PaintMe_Debug")
     parser.add_argument("--height", type=int, default=128)
     parser.add_argument("--width", type=int, default=128)
@@ -171,9 +218,10 @@ if __name__ == "__main__":
 
     # render
     render_shapenet_samples(
-        args.shapenet_path, 
-        args.save_path, 
-        args.height, args.width,
+        args.shapenet_path,
+        args.save_path,
+        args.height,
+        args.width,
         args.sample_csv,
         args.textureless,
     )
